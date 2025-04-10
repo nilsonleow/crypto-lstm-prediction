@@ -77,6 +77,16 @@ y_test_real = scaler.inverse_transform(
 # Визуализация
 plt.plot(y_test_real, label='Real Price')
 plt.plot(predicted, label='Predicted Price')
-plt.title('...
+plt.title('BTC Price Prediction with RSI (Enhanced Model)')
+plt.xlabel('Days')
+plt.ylabel('Price (USDT)')
+plt.legend()
+plt.savefig('prediction_rsi_enhanced.png')
+plt.show()
 
-Что-то пошло не так, повторите попытку.
+# Ошибка
+mse = np.mean((y_test_real - predicted) ** 2)
+print(f"Mean Squared Error: {mse}")
+
+# Сохранение модели
+model.save('btc_lstm_model_enhanced.keras')
