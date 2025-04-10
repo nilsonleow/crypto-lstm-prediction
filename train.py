@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
 from tensorflow.keras.callbacks import EarlyStopping
 import matplotlib.pyplot as plt
@@ -63,7 +63,7 @@ early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_wei
 # Обучение
 history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.1, callbacks=[early_stopping])
 
-# Прогноз
+# Прогноз на тестовом наборе
 predicted = model.predict(X_test)
 
 # Обратная нормализация только для close
@@ -74,7 +74,7 @@ y_test_real = scaler.inverse_transform(
     np.concatenate((y_test.reshape(-1, 1), np.zeros((len(y_test), 1))), axis=1)
 )[:, 0]
 
-# Визуализация
+# Визуализация тестового набора
 plt.plot(y_test_real, label='Real Price')
 plt.plot(predicted, label='Predicted Price')
 plt.title('BTC Price Prediction with RSI (Enhanced Model)')
@@ -90,3 +90,18 @@ print(f"Mean Squared Error: {mse}")
 
 # Сохранение модели
 model.save('btc_lstm_model_enhanced.keras')
+
+# Прогноз на следующий день
+# Берем последние seq_length дней из данных
+last_sequence = scaled_features[-seq_length:]
+last_sequence = np.expand_dims(last_sequence, axis=0)  # Добавляем размерность для модели
+
+# Предсказание
+next_day_pred = model.predict(last_sequence)
+
+# Обратная нормализация предсказания
+next_day_pred = scaler.inverse_transform(
+    np.concatenate((next_day_pred, np.zeros((len(next_day_pred), 1))), axis=1)
+)[:, 0]
+
+print(f"Предсказанная цена BTC на следующий день: {next_day_pred[0]:.2f} USDT")
