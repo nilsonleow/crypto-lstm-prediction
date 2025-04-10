@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.callbacks import EarlyStopping
 import matplotlib.pyplot as plt
 
 # Загрузка данных
@@ -32,16 +33,19 @@ y_train, y_test = y[:train_size], y[train_size:]
 # Построение модели
 model = Sequential()
 model.add(LSTM(units=50, return_sequences=True, input_shape=(seq_length, 4)))
-model.add(Dropout(0.3))
+model.add(Dropout(0.4))
 model.add(LSTM(units=50, return_sequences=False))
-model.add(Dropout(0.3))
+model.add(Dropout(0.4))
 model.add(Dense(units=25))
 model.add(Dense(units=1))
 
-model.compile(optimizer='adam', loss='mean_squared_error')
+model.compile(optimizer='rmsprop', loss='mean_squared_error')
+
+# Early Stopping
+early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
 # Обучение
-history = model.fit(X_train, y_train, epochs=50, batch_size=32, validation_split=0.1)
+history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.1, callbacks=[early_stopping])
 
 # Прогноз
 predicted = model.predict(X_test)
@@ -61,11 +65,12 @@ plt.title('BTC Price Prediction')
 plt.xlabel('Days')
 plt.ylabel('Price (USDT)')
 plt.legend()
-plt.savefig('prediction_updated.png')
+plt.savefig('prediction_updated_2.png')
 plt.show()
 
 # Ошибка
 mse = np.mean((y_test_real - predicted) ** 2)
 print(f"Mean Squared Error: {mse}")
 
-model.save('btc_lstm_model.h5')
+# Сохранение модели
+model.save('btc_lstm_model.keras')
