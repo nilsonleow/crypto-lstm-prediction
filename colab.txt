@@ -1,0 +1,9 @@
+!git clone https://github.com/nilsonleow/crypto-lstm-prediction.git
+%cd crypto-lstm-prediction
+!ls -l data/
+
+
+!pip install pandas numpy scikit-learn tensorflow matplotlib
+
+!git pull
+!python train.py
