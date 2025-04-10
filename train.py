@@ -15,22 +15,13 @@ def calculate_rsi(data, periods=14):
     rsi = 100 - (100 / (1 + rs))
     return rsi
 
-# Функция для вычисления MACD
-def calculate_macd(data, slow=26, fast=12, signal=9):
-    exp1 = data.ewm(span=fast, adjust=False).mean()
-    exp2 = data.ewm(span=slow, adjust=False).mean()
-    macd = exp1 - exp2
-    signal_line = macd.ewm(span=signal, adjust=False).mean()
-    return macd, signal_line
-
 # Загрузка данных
 data = pd.read_csv('data/btc_data.csv')
 data['rsi'] = calculate_rsi(data['close'], periods=14)
-data['macd'], data['macd_signal'] = calculate_macd(data['close'])
-data = data.dropna()  # Удаляем NaN после вычисления индикаторов
+data = data.dropna()  # Удаляем NaN после вычисления RSI
 
 # Подготовка признаков
-features = data[['close', 'rsi', 'macd', 'macd_signal']].values
+features = data[['close', 'rsi']].values
 
 # Нормализация
 scaler = MinMaxScaler(feature_range=(0, 1))
@@ -54,12 +45,14 @@ y_train, y_test = y[:train_size], y[train_size:]
 
 # Построение модели
 model = Sequential()
-model.add(Input(shape=(seq_length, 4)))  # 4 признака: close, rsi, macd, macd_signal
-model.add(LSTM(units=50, return_sequences=True))
+model.add(Input(shape=(seq_length, 2)))  # 2 признака: close, rsi
+model.add(LSTM(units=100, return_sequences=True))
 model.add(Dropout(0.2))
-model.add(LSTM(units=50, return_sequences=False))
+model.add(LSTM(units=100, return_sequences=True))
 model.add(Dropout(0.2))
-model.add(Dense(units=25))
+model.add(LSTM(units=100, return_sequences=False))
+model.add(Dropout(0.2))
+model.add(Dense(units=50))
 model.add(Dense(units=1))
 
 model.compile(optimizer='adam', loss='mean_squared_error')
@@ -75,25 +68,15 @@ predicted = model.predict(X_test)
 
 # Обратная нормализация только для close
 predicted = scaler.inverse_transform(
-    np.concatenate((predicted, np.zeros((len(predicted), 3))), axis=1)
+    np.concatenate((predicted, np.zeros((len(predicted), 1))), axis=1)
 )[:, 0]
 y_test_real = scaler.inverse_transform(
-    np.concatenate((y_test.reshape(-1, 1), np.zeros((len(y_test), 3))), axis=1)
+    np.concatenate((y_test.reshape(-1, 1), np.zeros((len(y_test), 1))), axis=1)
 )[:, 0]
 
 # Визуализация
 plt.plot(y_test_real, label='Real Price')
 plt.plot(predicted, label='Predicted Price')
-plt.title('BTC Price Prediction with RSI and MACD')
-plt.xlabel('Days')
-plt.ylabel('Price (USDT)')
-plt.legend()
-plt.savefig('prediction_rsi_macd.png')
-plt.show()
+plt.title('...
 
-# Ошибка
-mse = np.mean((y_test_real - predicted) ** 2)
-print(f"Mean Squared Error: {mse}")
-
-# Сохранение модели
-model.save('btc_lstm_model.keras')
+Что-то пошло не так, повторите попытку.
