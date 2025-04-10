@@ -67,3 +67,5 @@ plt.show()
 # Ошибка
 mse = np.mean((y_test_real - predicted) ** 2)
 print(f"Mean Squared Error: {mse}")
+
+model.save('btc_lstm_model.h5')
