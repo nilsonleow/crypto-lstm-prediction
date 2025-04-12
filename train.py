@@ -176,7 +176,7 @@ logger.info(f"Общий размер данных: X={X.shape}, y={y.shape}")
 # Разделение на train/test
 train_size = int(len(X) * 0.8)
 X_train, X_test = X[:train_size], X[train_size:]
-y_train, y_test = y[train_size:]
+y_train, y_test = y[:train_size], y[train_size:]  # Исправлено
 
 # Шаг 3: Создание и обучение модели
 model = create_model(model_type, seq_length, X.shape[2])
