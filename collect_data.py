@@ -60,9 +60,13 @@ def get_top_coins(limit=100):
 # Функция для проверки, торгуется ли пара на Binance
 def is_valid_symbol(client, symbol):
     try:
-        client.get_symbol_info(symbol)
-        logger.info(f"Пара {symbol} торгуется на Binance")
-        return True
+        symbol_info = client.get_symbol_info(symbol)
+        if symbol_info and symbol_info['status'] == 'TRADING':
+            logger.info(f"Пара {symbol} торгуется на Binance (статус: TRADING)")
+            return True
+        else:
+            logger.warning(f"Пара {symbol} не находится в статусе TRADING")
+            return False
     except Exception as e:
         logger.warning(f"Пара {symbol} не торгуется на Binance: {e}")
         return False
@@ -161,6 +165,11 @@ for symbol in valid_symbols:
     # Проверяем актуальность данных
     if check_data_freshness(symbol, end_str):
         continue  # Пропускаем, если данные актуальны
+    
+    # Дополнительная проверка перед сбором данных
+    if not is_valid_symbol(client, symbol):
+        logger.warning(f"Пропускаем {symbol}: пара не торгуется на Binance")
+        continue
     
     logger.info(f"Собираем данные для {symbol}...")
     data = get_historical_data(client, symbol, interval, start_str, end_str)
