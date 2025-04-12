@@ -50,10 +50,10 @@ def prepare_data(file_path, seq_length):
         features = data[['close', 'rsi']].values
         scaler = MinMaxScaler(feature_range=(0, 1))
         scaled_features = scaler.fit_transform(features)
-        return scaled_features, scaler
+        return scaled_features, scaler, data['close'].values  # Возвращаем также исходные цены
     except Exception as e:
         logger.error(f"Ошибка при обработке файла {file_path}: {e}")
-        return None, None
+        return None, None, None
 
 # Создание последовательностей
 def create_sequences(data, seq_length):
@@ -152,14 +152,16 @@ logger.info(f"Используем данные из файлов: {data_files}"
 
 all_X, all_y = [], []
 scalers = {}
+real_prices_dict = {}
 
 for file_path in data_files:
-    scaled_features, scaler = prepare_data(file_path, seq_length)
+    scaled_features, scaler, real_prices = prepare_data(file_path, seq_length)
     if scaled_features is None:
         continue
     
     symbol = os.path.basename(file_path).replace('_data.csv', '')
     scalers[symbol] = scaler
+    real_prices_dict[symbol] = real_prices  # Сохраняем реальные цены
     X, y = create_sequences(scaled_features, seq_length)
     all_X.append(X)
     all_y.append(y)
@@ -176,7 +178,7 @@ logger.info(f"Общий размер данных: X={X.shape}, y={y.shape}")
 # Разделение на train/test
 train_size = int(len(X) * 0.8)
 X_train, X_test = X[:train_size], X[train_size:]
-y_train, y_test = y[:train_size], y[train_size:]  # Исправлено
+y_train, y_test = y[:train_size], y[train_size:]
 
 # Шаг 3: Создание и обучение модели
 model = create_model(model_type, seq_length, X.shape[2])
@@ -204,7 +206,7 @@ y_pred = model.predict(X_test)
 mse = np.mean((y_test - y_pred) ** 2)
 logger.info(f"Mean Squared Error (на нормализованных данных): {mse}")
 
-# Шаг 6: Прогноз на следующий день для BTC, ETH и случайной криптовалюты
+# Шаг 6: Прогноз и сравнение с реальными ценами для BTC, ETH и случайной криптовалюты
 symbols_to_predict = ['BTCUSDT', 'ETHUSDT']
 # Выбираем случайную криптовалюту из списка, на которых обучалась модель
 available_symbols = [os.path.basename(f).replace('_data.csv', '') for f in data_files]
@@ -221,7 +223,7 @@ pred_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
 for symbol in symbols_to_predict:
     file_path = f'data/{symbol}_data.csv'
     if os.path.exists(file_path):
-        scaled_features, scaler = prepare_data(file_path, seq_length)
+        scaled_features, scaler, real_prices = prepare_data(file_path, seq_length)
         if scaled_features is not None:
             # Прогноз на следующий день
             last_sequence = scaled_features[-seq_length:]
@@ -232,23 +234,28 @@ for symbol in symbols_to_predict:
             )[:, 0]
             logger.info(f"Предсказанная цена {symbol} на {pred_date}: {next_day_pred[0]:.2f} USDT")
             
-            # Создание графика
+            # Прогноз для всего периода данных
+            X_full, _ = create_sequences(scaled_features, seq_length)
+            predicted_scaled = model.predict(X_full)
+            predicted_prices = scaler.inverse_transform(
+                np.concatenate((predicted_scaled, np.zeros((len(predicted_scaled), 1))), axis=1)
+            )[:, 0]
+            
+            # Создание графика сравнения
             plt.figure(figsize=(10, 6))
-            # Реальные данные (последние 30 дней)
-            data = pd.read_csv(file_path)
-            real_prices = data['close'].values[-30:]
-            plt.plot(range(30), real_prices, label='Real Price', color='blue')
-            # Прогноз
-            plt.plot([30], next_day_pred, 'ro', label='Predicted Price (Next Day)')
+            # Реальные цены (начиная с seq_length, чтобы соответствовать предсказаниям)
+            plt.plot(real_prices[seq_length:], label='Real Price', color='blue')
+            # Предсказанные цены
+            plt.plot(predicted_prices, label='Predicted Price', color='orange')
             plt.title(f'{symbol} Price Prediction ({model_type.capitalize()} Model v{version})')
             plt.xlabel('Days')
             plt.ylabel('Price (USDT)')
             plt.legend()
             plt.grid()
-            result_path = f'models/results/{model_name}_{symbol}_prediction.png'
+            result_path = f'models/results/{model_name}_{symbol}_comparison.png'
             plt.savefig(result_path)
             plt.close()
-            logger.info(f"График для {symbol} сохранен в {result_path}")
+            logger.info(f"График сравнения для {symbol} сохранен в {result_path}")
         else:
             logger.warning(f"Не удалось сделать прогноз для {symbol}: ошибка в данных")
     else:
