@@ -1,0 +1,2 @@
+```bash
+python3 collect_data.py --limit 100 --start-date "1 Jan, 2020" --end-date "12 Apr, 2025"
